@@ -2,5 +2,8 @@
 .Rhistory
 .RData
 .Ruserdata
-Data/vms_20-22_1-100035.xlsx
-Data/vms_20-22_100036-100292.xlsx
+data/vms_20-22_1-100035.xlsx
+data/vms_20-22_100036-100292.xlsx
+data/vms_messages.csv
+data/vms_messages_2.csv
+data/vms_devices.csv

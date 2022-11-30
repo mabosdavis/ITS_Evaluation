@@ -27,7 +27,7 @@ messages <- messages %>%
          Category, Condensed, Message)
 
 # find alt route messages
-messages_tibble <- messages %>% 
+messages <- messages %>% 
   mutate(Alt = grepl(" alt", messages$Message,
                      ignore.case = TRUE),
          Crash = grepl("crash", messages$Message,
@@ -36,7 +36,7 @@ messages_tibble <- messages %>%
                        ignore.case = TRUE))
 
 # create tibble with alt route messages
-messages_alt <- messages_tibble %>%
+messages_alt <- messages %>%
   filter(Category == c('Misc','Congestion'),
          Alt == TRUE)
 
@@ -52,11 +52,40 @@ crash <- crash %>%
   mutate(Date = mdy(Date))
 
 crash$datetime <- as.POSIXct(paste(crash$Date, crash$Time),
-                               format = "%Y-%m-%d %H:%M:%S")
+                             format = "%Y-%m-%d %H:%M:%S")
+
+# filter dates and category
+messages_edit <- messages %>% 
+  filter(Time >= "2020-03-01 00:00:00",
+         Time <= "2020-10-01 12:00:00",
+         Category == c("Misc","Congestion"))
 
 # left join crash and message data
+crash <- crash %>% 
+  mutate(upper_time = datetime + minutes(120))
+
+# left join
+crash_edit <- fuzzy_left_join(crash, messages_edit,
+                  by = c("datetime"="Time",
+                         "upper_time"="Time"),
+                  match_fun=list(`<=`, `>=`))
+
+crash_edits <- crash_edit %>% 
+  select(`#`, Date, Time.x, `Time Range #`,Location, Time.y, 
+         AIMS_Location, Condensed, Message, Alt, 
+         Crash, Caution, Category, Device_ID)
+         
+
+
+
+
+
+
+
+
 left <- crash %>% 
-  difference_left_join(messages, by = datetime, max_dist = 2, )
+  difference_left_join(messages, by = datetime, 
+                       max_dist = 2, )
 
 
 

@@ -35,10 +35,10 @@ messages <- messages %>%
          Caution = grepl("caution", messages$Message,
                        ignore.case = TRUE))
 
-# create tibble with alt route messages
-messages_alt <- messages %>%
-  filter(Category == c('Misc','Congestion'),
-         Alt == TRUE)
+# # create tibble with alt route messages
+# messages_alt <- messages %>%
+#   filter(Category == c('Misc','Congestion'),
+#          Alt == TRUE)
 
 # load TIM crash data
 crash <- read_csv("data/TIM_clean_2020.csv")
@@ -75,18 +75,3 @@ crash_edits <- crash_edit %>%
          AIMS_Location, Condensed, Message, Alt, 
          Crash, Caution, Category, Device_ID)
          
-
-
-
-
-
-
-
-
-left <- crash %>% 
-  difference_left_join(messages, by = datetime, 
-                       max_dist = 2, )
-
-
-
-

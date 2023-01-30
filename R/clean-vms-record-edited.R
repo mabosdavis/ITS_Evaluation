@@ -164,8 +164,8 @@ df1 <- df[ grepl(paste("CRASH", collapse="|"), df$V.message),]
 
 
 # write the file with VMS records recorded to crashes
-write.csv(df, file = "1.VMS_records_crashes.csv")
-saveRDS(df, file = "1.VMS_records_crashes.rds")
+write.csv(df1, file = "1.VMS_records_crashes.csv")
+saveRDS(df1, file = "1.VMS_records_crashes.rds")
 
 #rm(df); 
 

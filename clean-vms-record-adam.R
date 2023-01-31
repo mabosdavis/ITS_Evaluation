@@ -5,9 +5,8 @@
 ##### Cleaning VMS records to the desired form #####
 
 #packages
-library("stringr")
 library("readxl")
-library("dplyr")
+library ("tidyverse")
 
 # import the VMS records
 df1 <- read_excel("C:\\Users\\Adam Hill\\Box\\ITS Effectiveness in Utah\\Data\\VMS record cleaning - adjusted\\2020-2021 VMS messages\\vms_20-22_1.xlsx")
@@ -74,7 +73,8 @@ df$x5 <- sapply(strsplit(as.character(df$V.message),'><'), "[", 5)
 df$x6 <- sapply(strsplit(as.character(df$V.message),'><'), "[", 6)
 df$x7 <- sapply(strsplit(as.character(df$V.message),'><'), "[", 7)
 df$x8 <- sapply(strsplit(as.character(df$V.message),'><'), "[", 8)
-#df$V.message <- NULL
+df$V.message1 <- df$V.message
+df$V.message <- NULL
 
 # add Beacon column
 temp <- as.data.frame(str_match(df$x1, 'BEACON="\\s*(.*?)\\s*"'))
@@ -152,10 +152,9 @@ df$V.flashon <- NULL
 df$V.flashoff <- NULL
 
 # reorder columns
-df <- df[c("V.device.id", "V.device.location","V.route", "V.bound", 
+df <- df[c("V.device.id", "V.device.location","V.message", "V.message1", "V.route", "V.bound", 
            "V.mile.post", "V.source.type", "V.start.time", 
-           "V.end.time", "V.duration", "V.frames", "V.lines.per.frame", 
-           "V.message")]
+           "V.end.time", "V.duration", "V.frames", "V.lines.per.frame")]
 
 # data frame with USER source only
 #df <- df[df$V.source.type != "FMS",]
@@ -179,21 +178,53 @@ df <- df[c("V.device.id", "V.device.location","V.route", "V.bound",
 
 #basically "or" statements. can have multiple classifications
 df$V.intent <- case_when(
-  grepl("SNOW", df$V.message)~ "weather",
-  grepl("ICE", df$V.message)~ "weather",
-  grepl("SLOW", df$V.message)~ "weather",
+  grepl("ICE", df$V.message1)|grepl("ICY", df$V.message1)|grepl("WINTER", df$V.message1)|grepl("FOG", df$V.message1)|grepl("SLICK", df$V.message1)|grepl("WATER", df$V.message1)|grepl("SNOW", df$V.message1) ~ "weather",
+  TRUE~"na"
+)
+df$V.intent <- ifelse (grepl("CHAINS", df$V.message1), "na", df$V.intent)
+
+#Selecting only the messages most explicitly saying to reduce speed.
+#Implied might also be effective, but that's not the purpose of the study
+df$V.slow <- ifelse (grepl("SLOW", df$V.message1), TRUE, FALSE)
+df$V.caution <- ifelse (grepl("CAUTION", df$V.message1), TRUE, FALSE)
+df$V.speed <- ifelse (grepl("SPEED", df$V.message1), TRUE, FALSE)
+
+df$V.canyon <- case_when(
+  df$V.device.id == "100006" | df$V.device.id == "100007" ~ "Sardine",
+  df$V.device.id == "100149" ~ "Ogden",
+  df$V.device.id == "100270" ~ "Weber",
+  df$V.device.id == "100223" | df$V.device.id == "100225" | df$V.device.id == "100227" | df$V.device.id == "100224" ~ "Provo",
   TRUE~"na"
 )
 
-df1 <- df[df$V.intent != "na",]
+df$V.select.location <- case_when(
+  df$V.device.id == "100006" | df$V.device.id == "100007" ~ "true",
+  df$V.device.id == "100149" ~ "true",
+  df$V.device.id == "100270" ~ "true",
+  df$V.device.id == "100223" | df$V.device.id == "100225" | df$V.device.id == "100227" | df$V.device.id == "100224" ~ "true",
+)
+df1 <- df %>%
+  filter(V.intent == "weather")
 
+df1$V.select.message <- case_when(
+  df1$V.slow == TRUE  ~ "true",
+  df1$V.speed == TRUE ~ "true",
+  df1$V.caution == TRUE ~ "true"
+)
+
+#df1 <- df[df$V.intent != "na",]
+
+df2 <- df1%>%
+  filter(V.select.message == "true")%>%
+  filter(V.select.location == "true")
+  
+#df2 <- df1[df1$V.selected == "Sardine",]
 
 # write the file with VMS records recorded to crashes
-write.csv(dfn, file = "VMS_records_weather.csv")
-write.csv(df_1, file = "VMS_records_snow.csv")
-saveRDS(df, file = "1.VMS_records_crashes.rds")
+write.csv(df2, file = "VMS_records_weather.csv")
+saveRDS(df, file = "VMS_records.rds")
 
-rm(df); 
+#rm(df); 
 
 ################################################################################
 ################################################################################

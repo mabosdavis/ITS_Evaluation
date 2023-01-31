@@ -10,13 +10,13 @@ library("readxl")
 library("dplyr")
 
 # import the VMS records
-df1 <- read_excel("2020-2021 VMS messages/vms_20-22_1.xlsx")
-df2 <- read_excel("2020-2021 VMS messages/vms_20-22_2.xlsx")
+df1 <- read_excel("C:\\Users\\Adam Hill\\Box\\ITS Effectiveness in Utah\\Data\\VMS record cleaning - adjusted\\2020-2021 VMS messages\\vms_20-22_1.xlsx")
+df2 <- read_excel("C:\\Users\\Adam Hill\\Box\\ITS Effectiveness in Utah\\Data\\VMS record cleaning - adjusted\\2020-2021 VMS messages\\vms_20-22_2.xlsx")
 
 dfn <- rbind(df1, df2 )
 rm(df1); rm(df2)
 
-base <- read_excel("2020-2021 VMS messages/vms_all.xlsx")
+base <- read_excel("C:\\Users\\Adam Hill\\Box\\ITS Effectiveness in Utah\\Data\\VMS record cleaning - adjusted\\2020-2021 VMS messages\\vms_all.xlsx")
 
 df <- inner_join(dfn, base, by="Device ID")
 
@@ -163,15 +163,29 @@ df <- df[c("V.device.id", "V.device.location","V.route", "V.bound",
 #df <- df[df$V.source.type != "NONE",]
 
 
-# data frame with crash messages only
+# creates seperate data frames for different message types
 #dfa <- df[grepl "SNOW|ICE|SPEED|SLOW|ICY", df$V.message),]
-df_1 <- df[ grepl(paste("SNOW", collapse="|") , df$V.message),] 
-df_2 <- df[ grepl(paste("SLOW", collapse="|"), df$V.message),] 
-df_3 <- df[ grepl(paste("ICE", collapse="|"), df$V.message),]
-df_4 <- df[ grepl(paste("ICY", collapse="|"), df$V.message),]
-df_5 <- df[ grepl(paste("SPEED", collapse="|"), df$V.message),]
+#df_1 <- df[ grepl(paste("SNOW", collapse="|") , df$V.message),] 
+#df_2 <- df[ grepl(paste("SLOW", collapse="|"), df$V.message),] 
+#df_3 <- df[ grepl(paste("ICE", collapse="|"), df$V.message),]
+#df_4 <- df[ grepl(paste("ICY", collapse="|"), df$V.message),]
+#df_5 <- df[ grepl(paste("SPEED", collapse="|"), df$V.message),]
+#dfn <- rbind(df_1, df_2, df_3, df_4, df_5 )
 
-dfn <- rbind(df_1, df_2, df_3, df_4, df_5 )
+#test statement, but it overwrites itself
+#df$V.intent <- ifelse (grepl("SNOW", df$V.message)==TRUE, "Weather", "na")
+#df$V.intent <- ifelse (grepl("ICE", df$V.message)==TRUE, "Weather", "na")
+#df$V.intent <- ifelse (grepl("SLOW", df$V.message)==TRUE, "Weather", "na")
+
+#basically "or" statements. can have multiple classifications
+df$V.intent <- case_when(
+  grepl("SNOW", df$V.message)~ "weather",
+  grepl("ICE", df$V.message)~ "weather",
+  grepl("SLOW", df$V.message)~ "weather",
+  TRUE~"na"
+)
+
+df1 <- df[df$V.intent != "na",]
 
 
 # write the file with VMS records recorded to crashes

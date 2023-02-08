@@ -3,7 +3,7 @@ pacman::p_load(tidyverse, lubridate, fuzzyjoin)
 
 # load data
 devices <- read_csv("data/vms_devices.csv")
-msg <- readRDS("data/1.VMS_records_crashes.rds")
+msg <- as.tibble(readRDS("data/1.VMS_records_crashes.rds"))
 
 # # clean data
 # msg <- msg %>% 
@@ -40,22 +40,28 @@ msg <- readRDS("data/1.VMS_records_crashes.rds")
 #          Alt == TRUE)
 
 # load TIM crash data
-crash <- read_csv("data/TIM_clean_2020.csv")
+crash <- as.tibble(read_csv("data/TIM_clean_2020.csv"))
 
 # filter out rows without Total Excess Travel Time
 crash <- crash %>% 
   filter(!is.na(`Total Excess Travel Time`))
 
-# rename rows the same as the msg rows
-crash <- crash  %>% 
-  mutate(DateTime = paste(Date, Time)) %>% 
-  mutate(across('DateTime', ~ as.POSIXct(.x, format = "%Y/%m/%d %H.%M.%S"))) 
+# create one datetime column
+crash$C.start.time <- as.POSIXct(as.character(
+  paste(crash$Date, crash$Time)), format="%m/%d/%Y %H:%M:%S")
 
+# rename columns to be consistent with msg
+crash <- crash %>%
+  rename(C.crash.id = `#`,
+         C.crash.location = Location,
+         C.crash.type = `Crash Type`,
+         C.crash.type.num = `Crash Type #`,
+         C.affected.volume = `Affected Volume`,
+         C.total.excess.travel.time = `Total Excess Travel Time`,
+         C.time.range = `Time Range`,
+         C.time.range.num = `Time Range #`
+         )
 
-
-%>%  
-  rename(C.crash.id = #,
-           )
 
 # # make Date a date
 # crash <- crash %>% 
@@ -72,12 +78,12 @@ crash <- crash  %>%
 
 # left join crash and message data
 crash <- crash %>% 
-  mutate(upper_time = datetime + minutes(120))
+  mutate(C.two.hrs = C.start.time + minutes(120))
 
 # left join
-crash_edit <- fuzzy_left_join(crash, messages_edit,
-                  by = c("datetime"="Time",
-                         "upper_time"="Time"),
+crash_edit <- fuzzy_left_join(crash, msg,
+                  by = c("C.start.time"="V.start.time",
+                         "C.two.hrs"="V.start.time"),
                   match_fun=list(`<=`, `>=`))
 
 crash_edits <- crash_edit %>% 

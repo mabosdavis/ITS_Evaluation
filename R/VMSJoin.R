@@ -3,7 +3,7 @@ pacman::p_load(tidyverse, lubridate, fuzzyjoin)
 
 # load data
 devices <- read_csv("data/vms_devices.csv")
-msg <- read_csv("data/vms_messages.csv")
+msg <- read_csv("data/VMS_Join.R OG Files/vms_messages.csv")
 msg_2 <- read_csv("data/vms_messages_2.csv")
 
 # clean data

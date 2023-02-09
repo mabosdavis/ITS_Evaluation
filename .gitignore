@@ -7,4 +7,26 @@ data/vms_20-22_100036-100292.xlsx
 data/vms_messages.csv
 data/vms_messages_2.csv
 data/vms_devices.csv
-data/TIM_clean_2020.csv
+data/TIM_clean_2018.csv
+data/TIM_clean_2022.csv
+2020/VMS History 01 2020.xlsx
+2020/VMS History 02 2020.xlsx
+2020/VMS History Q1 2020.xlsx
+2020/VMS History Q2 2020.xlsx
+2020/VMS History Q3 2020.xlsx
+2020/VMS History Q4 2020.xlsx
+2020/VMS History Q5 2020.xlsx
+2020/VMS History Q6 2020.xlsx
+2020/VMS History Q7 2020.xlsx
+data/Lookup Tables/vms.1.xlsx
+data/Lookup Tables/vms.2.xlsx
+data/msg_crash_18-22.xlsx
+data/NotUsedFiles/TIM_clean_2020.csv
+data/NotUsedFiles/vms_20-22_1-100035.xlsx
+data/NotUsedFiles/vms_20-22_100036-100292.xlsx
+data/NotUsedFiles/vms_2018_1.csv
+data/NotUsedFiles/vms_2018_2.csv
+data/NotUsedFiles/vms_2022.csv
+data/VMS_Join.R OG Files/vms_messages.csv
+data/VMS_Join.R OG Files/vms_messages_2.csv
+data/VMS_Join.R OG Files/vms_devices.csv

@@ -2,9 +2,9 @@
 pacman::p_load(tidyverse, lubridate, fuzzyjoin)
 
 # load data
-devices <- read_csv("data/vms_devices.csv")
+devices <- read_csv("data/VMS_Join.R OG Files/vms_devices.csv")
 msg <- read_csv("data/VMS_Join.R OG Files/vms_messages.csv")
-msg_2 <- read_csv("data/vms_messages_2.csv")
+msg_2 <- read_csv("data/VMS_Join.R OG Files/vms_messages_2.csv")
 
 # clean data
 msg <- msg %>% 
@@ -41,7 +41,7 @@ messages <- messages %>%
 #          Alt == TRUE)
 
 # load TIM crash data
-crash <- read_csv("data/TIM_clean_2020.csv")
+crash <- read_csv("data/NotUsedFIles/TIM_clean_2020.csv")
 
 # clean data
 crash <- crash %>% 

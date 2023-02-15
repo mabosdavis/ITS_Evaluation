@@ -211,3 +211,22 @@ temp$V.duration <- difftime(temp$V.start.time, temp$C.start.time,
                             tz = "US/Mountain",
                             units = "mins")
 
+# column for VMS msg route and bound
+temp$V.route.bound <- sapply(strsplit(
+  as.character(temp$V.location),'@'), "[", 1)
+temp$V.route <- sapply(strsplit(
+  as.character(temp$V.route.bound),' '), "[", 1)
+temp$V.bound <- sapply(strsplit(
+  as.character(temp$V.route.bound),' '), "[", 2)
+temp$V.route.bound <- NULL
+
+write_rds(temp, file = "data/temp.rds")
+
+# column for crash route
+
+# To-do
+# - get this section to work where it pulls out the route info
+# # VMS device location milepost
+# temp1 <- as.data.frame(str_match(temp$C.location, 
+#                                 '\\s* (I \\d+ \\w?) \\s*,'))
+# temp$C.route <- temp$V2; rm(temp1)

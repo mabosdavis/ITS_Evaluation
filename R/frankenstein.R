@@ -21,6 +21,10 @@ msg <- msg %>%
   filter(V.source.type == "USER") %>% 
   select(V.device.id, V.start.time, V.message) 
 
+# ensure that the time is set to MST (originally UTC)
+msg$V.start.time <- msg$V.start.time %>% 
+  with_tz( tzone = "US/Mountain")
+
 # filter only msgs from March-August
 msg <- msg %>% 
   mutate(V.month = month(V.start.time)) %>% 
@@ -161,7 +165,8 @@ crash <- crash %>%
 
 # combine date and time into one column
 crash$datetime <- as.POSIXct(paste(crash$Date, crash$Time),
-                             format = "%Y-%m-%d %H:%M:%S")
+                             format = "%Y-%m-%d %H:%M:%S",
+                             tz = "US/Mountain")
 
 # create 2hr time buffer from crash start time
 crash <- crash %>% 
@@ -181,9 +186,6 @@ crash <- crash %>%
 #################################################################
 ##################Left join crash to msg data####################
 #################################################################
-# This section
-# - Fix Left_join being 8 hrs off
-
 
 # left join - this takes a few seconds
 temp <- fuzzy_left_join(crash, 

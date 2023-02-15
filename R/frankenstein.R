@@ -206,3 +206,8 @@ temp <- temp %>%
 temp <- temp %>% 
   mutate(V.year = year(V.start.time))
 
+# column for difference in start times
+temp$V.duration <- difftime(temp$V.start.time, temp$C.start.time, 
+                            tz = "US/Mountain",
+                            units = "mins")
+

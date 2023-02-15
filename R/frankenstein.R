@@ -193,4 +193,16 @@ temp <- fuzzy_left_join(crash,
                         by = c("C.start.time"="V.start.time",
                                "C.two.hours"="V.start.time"),
                               match_fun=list(`<=`, `>=`))
+#################################################################
+###############General Cleaning to Final Dataset#################
+#################################################################
+
+# arrange columns
+temp <- temp %>% 
+  select(C.TETT, C.crash.id, C.location, V.location, V.message, 
+         C.start.time, V.start.time, V.device.id)
+
+# create year column to enable filtering
+temp <- temp %>% 
+  mutate(V.year = year(V.start.time))
 

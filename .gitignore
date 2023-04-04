@@ -30,3 +30,4 @@ data/NotUsedFiles/vms_2022.csv
 data/VMS_Join.R OG Files/vms_messages.csv
 data/VMS_Join.R OG Files/vms_messages_2.csv
 data/VMS_Join.R OG Files/vms_devices.csv
+*.csv

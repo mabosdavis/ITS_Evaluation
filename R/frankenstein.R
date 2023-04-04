@@ -50,14 +50,22 @@ msg$V.month <- NULL
 #            remove = FALSE)
 
 # manipulate VMS message column
-msg$x1 <- sapply(strsplit(as.character(msg$V.message),'><'), "[", 1)
-msg$x2 <- sapply(strsplit(as.character(msg$V.message),'><'), "[", 2)
-msg$x3 <- sapply(strsplit(as.character(msg$V.message),'><'), "[", 3)
-msg$x4 <- sapply(strsplit(as.character(msg$V.message),'><'), "[", 4)
-msg$x5 <- sapply(strsplit(as.character(msg$V.message),'><'), "[", 5)
-msg$x6 <- sapply(strsplit(as.character(msg$V.message),'><'), "[", 6)
-msg$x7 <- sapply(strsplit(as.character(msg$V.message),'><'), "[", 7)
-msg$x8 <- sapply(strsplit(as.character(msg$V.message),'><'), "[", 8)
+msg$x1 <- sapply(strsplit(as.character(msg$V.message),'><'), 
+                 "[", 1)
+msg$x2 <- sapply(strsplit(as.character(msg$V.message),'><'), 
+                 "[", 2)
+msg$x3 <- sapply(strsplit(as.character(msg$V.message),'><'), 
+                 "[", 3)
+msg$x4 <- sapply(strsplit(as.character(msg$V.message),'><'), 
+                 "[", 4)
+msg$x5 <- sapply(strsplit(as.character(msg$V.message),'><'), 
+                 "[", 5)
+msg$x6 <- sapply(strsplit(as.character(msg$V.message),'><'), 
+                 "[", 6)
+msg$x7 <- sapply(strsplit(as.character(msg$V.message),'><'), 
+                 "[", 7)
+msg$x8 <- sapply(strsplit(as.character(msg$V.message),'><'), 
+                 "[", 8)
 msg$V.message <- NULL
 
 # extracting exact VMS message
@@ -130,7 +138,7 @@ msg$tt <- NULL
 # - VMS route and bound
 
 # load devices data
-devices <- read.csv("data/VMS_Join.R OG Files/vms_devices.csv")
+devices <- read.csv("data/vms_devices.csv")
 
 # clean devices data for relevant info
 devices <- devices %>% 
@@ -188,7 +196,7 @@ crash <- crash %>%
 #################################################################
 
 # left join - this takes a few seconds
-temp <- fuzzy_left_join(crash, 
+join <- fuzzy_left_join(crash, 
                         msg,
                         by = c("C.start.time"="V.start.time",
                                "C.two.hours"="V.start.time"),
@@ -198,35 +206,167 @@ temp <- fuzzy_left_join(crash,
 #################################################################
 
 # arrange columns
-temp <- temp %>% 
+join <- join %>% 
   select(C.TETT, C.crash.id, C.location, V.location, V.message, 
          C.start.time, V.start.time, V.device.id)
 
 # create year column to enable filtering
-temp <- temp %>% 
+join <- join %>% 
   mutate(V.year = year(V.start.time))
 
 # column for difference in start times
-temp$V.duration <- difftime(temp$V.start.time, temp$C.start.time, 
+join$V.duration <- difftime(join$V.start.time, join$C.start.time, 
                             tz = "US/Mountain",
                             units = "mins")
 
 # column for VMS msg route and bound
-temp$V.route.bound <- sapply(strsplit(
-  as.character(temp$V.location),'@'), "[", 1)
-temp$V.route <- sapply(strsplit(
-  as.character(temp$V.route.bound),' '), "[", 1)
-temp$V.bound <- sapply(strsplit(
-  as.character(temp$V.route.bound),' '), "[", 2)
-temp$V.route.bound <- NULL
+join$V.route.bound <- sapply(strsplit(
+  as.character(join$V.location),'@'), "[", 1)
+join$V.route <- sapply(strsplit(
+  as.character(join$V.route.bound),' '), "[", 1)
+join$V.bound <- sapply(strsplit(
+  as.character(join$V.route.bound),' '), "[", 2)
+join$V.route.bound <- NULL
 
-write_rds(temp, file = "data/temp.rds")
+write_rds(join, file = "data/join.rds")
 
 # column for crash route
 
 # To-do
 # - get this section to work where it pulls out the route info
 # # VMS device location milepost
-# temp1 <- as.data.frame(str_match(temp$C.location, 
+# join1 <- as.data.frame(str_match(join$C.location, 
 #                                 '\\s* (I \\d+ \\w?) \\s*,'))
-# temp$C.route <- temp$V2; rm(temp1)
+# join$C.route <- join$V2; rm(join1)
+
+#################################################################
+#############Load and Clean 2018 and 2022 VMS data###############
+#################################################################
+
+# load vms data
+vms_18_1 <- read_csv("data/2018_9-12_Vmsalt.csv")
+vms_18_2 <- read_csv("data/2018_1-8_Vmsalt.csv")
+vms_22 <- read_csv("data/2022_vmsalt.csv")
+
+vms <- rbind(vms_18_1, vms_18_2, vms_22)
+
+rm(vms_18_1, vms_18_2, vms_22)
+
+# rename columns
+vms <- vms %>% 
+  rename(V.device.id = DeviceId,
+         V.start.time = MsgDateTime,
+         V.message = Message,
+         V.source.type = MsgSourceType, 
+         V.source.name = MsgSourceName)
+
+# clean message data
+vms <- vms %>%
+  filter(V.source.type == "USER") %>%
+  select(V.device.id, V.start.time, V.message)
+
+# make V.start.time a datetime
+vms$V.start.time <- as.POSIXct(vms$V.start.time,
+                             format = "%m/%d/%Y %H:%M",
+                             tz = "US/Mountain")
+
+# filter only msgs from March-August
+vms <- vms %>% 
+  mutate(V.month = month(V.start.time)) %>% 
+  filter(V.month >= 3,
+         V.month <= 8)
+
+vms$V.month <- NULL
+
+# Create day, month, and year column for filtering
+vms <- vms %>% 
+  mutate(V.month = month(V.start.time),
+         V.year = year(V.start.time),
+         V.day = day(V.start.time))
+
+# remove duplicate rows
+vms <- vms %>%
+  group_by(V.device.id, V.year, V.month, V.day) %>% 
+  distinct(V.message, .keep_all = TRUE) %>% 
+  ungroup()
+
+# load devices data
+devices <- read.csv("data/VMS_Join.R OG Files/vms_devices.csv")
+
+# clean devices data for relevant info
+devices <- devices %>% 
+  select(Device_ID, AIMS_Location, PrimaryLocation, Milepost) %>%  
+  rename(V.device.id = Device_ID,
+         V.location = AIMS_Location,
+         V.route = PrimaryLocation,
+         V.milepost = Milepost)
+
+# left join devices data to vms data
+vms <- left_join(vms, devices, 
+                 by = join_by(V.device.id == V.device.id)) %>% 
+  filter(!is.na(V.location))
+
+rm(devices)
+
+
+#################################################################
+#######Clean Full VMS data to be usable for reference############
+#################################################################
+
+# manipulate VMS message column
+vms$x1 <- sapply(strsplit(as.character(vms$V.message),'><'), 
+                 "[", 1)
+vms$x2 <- sapply(strsplit(as.character(vms$V.message),'><'), 
+                 "[", 2)
+vms$x3 <- sapply(strsplit(as.character(vms$V.message),'><'), 
+                 "[", 3)
+vms$x4 <- sapply(strsplit(as.character(vms$V.message),'><'), 
+                 "[", 4)
+vms$x5 <- sapply(strsplit(as.character(vms$V.message),'><'), 
+                 "[", 5)
+vms$x6 <- sapply(strsplit(as.character(vms$V.message),'><'), 
+                 "[", 6)
+vms$x7 <- sapply(strsplit(as.character(vms$V.message),'><'), 
+                 "[", 7)
+vms$x8 <- sapply(strsplit(as.character(vms$V.message),'><'), 
+                 "[", 8)
+vms$V.message <- NULL
+
+# extracting exact VMS message
+temp <- as.data.frame(str_match(vms$x2, '>\\s*(.*?)\\s*<'))
+vms$Message1 <- temp$V2
+
+temp <- as.data.frame(str_match(vms$x3, '>\\s*(.*?)\\s*<'))
+vms$Message2 <- temp$V2
+
+temp <- as.data.frame(str_match(vms$x4, '>\\s*(.*?)\\s*<'))
+vms$Message3 <- temp$V2
+
+temp <- as.data.frame(str_match(vms$x5, '>\\s*(.*?)\\s*<'))
+vms$Message4 <- temp$V2
+
+temp <- as.data.frame(str_match(vms$x6, '>\\s*(.*?)\\s*<'))
+vms$Message5 <- temp$V2
+
+temp <- as.data.frame(str_match(vms$x7, '>\\s*(.*?)\\s*<'))
+vms$Message6 <- temp$V2; rm(temp)
+
+vms$x1 <- NULL; vms$x2 <- NULL; vms$x3 <- NULL; 
+vms$x4 <- NULL; vms$x5 <- NULL; vms$x6 <- NULL; 
+vms$x7 <- NULL; vms$x8 <- NULL; 
+
+# Finally extract VMS message only
+vms$V.message <- with(vms, paste0(Message1, " ", Message2, " ", 
+                                  Message3, " ", Message4, " ", 
+                                  Message5, " ", Message6))
+
+vms$V.message <- gsub("NA","",as.character(vms$V.message))
+
+# remove unnecessary columns
+vms$Message1 <- NULL; vms$Message2 <- NULL; 
+vms$Message3 <- NULL; vms$Message4 <- NULL; 
+vms$Message5 <- NULL; vms$Message6 <- NULL;
+
+
+
+

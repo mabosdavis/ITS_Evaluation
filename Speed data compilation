@@ -1,0 +1,166 @@
+## Trial data compiling
+library (dplyr)
+library(lubridate)
+
+source <- "C:\\Users\\hilla\\Documents\\BYU\\Masters\\S(102520)\\"
+
+#set up reference data. In the future I'll just have this draw in csvs for the pems and rwis
+pems_info <- data.frame(IntId = c(100067,100875,100876,100877,100878,100879),
+                      MP = c(17.18,5.61,10.05,12.7,13.89,15.01),
+                      pems_rt = c("US-89","US-89","US-89","US-89","US-89","US-89"))
+
+sign_info <- data.frame(Direction = c("S", "N"),
+                        sign_MP = c(2.26, 11.6),
+                        road_FFS = c(45,45),
+                        read_rt = c("US-89", "US-89"),
+                        Message = c("Slow down", "down slow"))
+
+weather_info <- data.frame(Station = c("C8843", "UTMAN", "PC115", "C8842", "SWH", "C8916"),
+                           MP = c(3.7,5.8,10,10.2,12.7,16.9),
+                           rwis_rt = c("US-89","US-89","US-89","US-89","US-89","US-89"))
+
+pems_stations <- c(100067,100875,100876,100877,100878,100879)
+rwis_stations <- c("C8842", "C8843","C8916","SWH","UTMAN")
+
+
+#combine pems data
+source_csv <- "C:/Users/hilla/Documents/BYU/Masters/S(102520)/csv"
+csv_files <- list.files(source_csv, pattern = "*.csv", full.names = TRUE)
+data_red <- data.frame()
+for (file in csv_files) {
+  data <- read.csv(file)
+  data$Timestamp <-mdy_hms(data$Timestamp)
+  data_red <- rbind(data_red,data)
+}
+
+data_red <- data_red[, -c(2,9,10,11,12)]
+
+data_red <-left_join(data_red,pems_info, by = "IntId")
+data_red <-left_join(data_red,sign_info, by = "Direction")
+  
+timeon <- ymd_hms("2020-10-26 3:03:00 PM")
+timeoff <- ymd_hms("2020-10-26 6:00:00 PM")
+
+data_red$timeon_diff <- difftime(data_red$Timestamp, timeon, units = c("hours"))
+data_red$timeoff_diff <- difftime(timeoff, data_red$Timestamp, units = c("hours"))
+
+#combine rwis data
+cleaned_rwis <- data.frame()
+rwishead <- c("Station","Timestamp", "Air_Temp","Road_Temp","Grip","Precipitation","Visibility")
+for (x in rwis_stations){
+  #read in the data
+  string <- paste0(source,x,".csv")
+  data <- read.csv(string)
+  for(i in seq_along(data)){
+    name <- colnames(data)[i]
+    print(i)
+    print(name)
+    #start cleaning the data
+   if (grepl("temp",name)&grepl("air",name)&is.numeric(data[[i]])) {
+     c= i-1
+     for (b in 1:c) {
+       nameb <- colnames(data)[b]
+       if (grepl("Air_Temp",nameb)) {
+         colnames(data)[i]<- "extra" 
+       }
+      }
+    if (!grepl("extra",colnames(data)[i])) {
+      colnames(data)[i]<- "Air_Temp"
+      print("Air_Temp")
+    }
+     next
+   } 
+    if (grepl("temp",name)&grepl("road",name)&is.numeric(data[[i]])) {
+      c= i-1
+      for (b in 1:c) {
+        nameb <- colnames(data)[b]
+        if (grepl("Road_Temp",nameb)) {
+          colnames(data)[i]<- "extra" 
+        }
+      }
+      if (!grepl("extra",colnames(data)[i])) {
+        colnames(data)[i]<- "Road_Temp"
+        print("Road_Temp")
+      }
+      next
+    } 
+    if (grepl("grip",name)&is.numeric(data[[i]])) {
+      c= i-1
+      for (b in 1:c) {
+        nameb <- colnames(data)[b]
+        if (grepl("Grip",nameb)) {
+          colnames(data)[i]<- "extra" 
+        }
+      }
+      if (!grepl("extra",colnames(data)[i])) {
+        colnames(data)[i]<- "Grip"
+        print("Grip")
+      }
+      next
+    } 
+    if (grepl("precip",name)&is.numeric(data[[i]])) {
+      c= i-1
+      for (b in 1:c) {
+        nameb <- colnames(data)[b]
+        if (grepl("Precipitation",nameb)) {
+          colnames(data)[i]<- "extra" 
+        }
+      }
+      if (!grepl("extra",colnames(data)[i])) {
+        colnames(data)[i]<- "Precipitation"
+        print("Precipitation")
+      }
+      
+      next
+    }
+    if (grepl("condition",name)& !is.numeric(data[[i]]) & !any(is.na(data$name))) {
+     colnames(data)[i]<- "Visibility"
+     print("Visibility")
+     next
+      }
+    if (grepl("ID",name)) {
+      colnames(data)[i]<- "Station"
+      print("Station")
+      next
+    } 
+    if (grepl("Date",name)) {
+      #does this next line work?
+      data$i<-mdy_hms(data[,i])
+      colnames(data)[i]<- "Timestamp"
+      print("Timestamp")
+      next
+    } 
+    print(colnames(data)[i])
+  }
+  for (a in 1:40) {
+    print(a)
+    for (i in seq_along(data) ) {
+      name <- colnames(data)[i]
+      if (!grepl(paste(rwishead, collapse = "|"), name)) {
+       data <- data[,-i]
+       next
+      }
+    }
+  }
+    # Return the station name
+  for (d in rwishead){
+    if (!(d %in% colnames(data))) {
+      data <- mutate(data, !!d := NA)
+    }
+  }
+  data <- select(data, all_of(rwishead))
+  print(x)
+  
+  cleaned_rwis <- rbind(cleaned_rwis, data)
+}
+cleaned_rwis <-left_join(cleaned_rwis,weather_info, by = "Station")
+
+# Subtract one day from each timestamp
+data_red$Timestamp <- data_red$Timestamp - days(1)
+
+#order data
+data_red1 <- arrange(data_red,Timestamp)
+cleaned_rwis1 <- arrange(cleaned_rwis,Timestamp)
+cleaned_rwis1$Timestamp <- mdy_hms(cleaned_rwis1$Timestamp)
+
+#find closest, non-error data point based on timestamp

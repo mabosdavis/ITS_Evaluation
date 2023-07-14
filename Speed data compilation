@@ -1,5 +1,6 @@
 ## Trial data compiling
 library (dplyr)
+library(ggplot2)
 library(lubridate)
 begin_time <- Sys.time()
 
@@ -44,8 +45,16 @@ timeoff <- ymd_hms("2020-10-26 6:00:00 PM")
 
 data_red$timeon_diff <- difftime(data_red$Timestamp, timeon, units = c("hours"))
 data_red$timeoff_diff <- difftime(timeoff, data_red$Timestamp, units = c("hours"))
-
+data_red1 <- data.frame()
 ## trim down to data 30 min before and 30 min after##
+for (e in 1:nrow(data_red)) {
+  if (data_red[e,"timeon_diff"]>-.25&data_red[e,"timeoff_diff"]>-.25) {#if within bounds
+    data_red1 <-rbind(data_red1,data_red[e,]) #add row to selected data frame
+    #n<-n+1
+    #print(n)
+  }
+}
+
 
 #combine rwis data
 cleaned_rwis <- data.frame()
@@ -159,10 +168,10 @@ for (x in rwis_stations){
 cleaned_rwis <-left_join(cleaned_rwis,weather_info, by = "Station")
 
 # Subtract one day from each timestamp for cleaning
-data_red$Timestamp <- data_red$Timestamp - days(1)
+data_red1$Timestamp <- data_red1$Timestamp - days(1)
 
 #order data
-data_red1 <- arrange(data_red,Timestamp)
+data_red1 <- arrange(data_red1,Timestamp)
 cleaned_rwis1 <- arrange(cleaned_rwis,Timestamp)
 #data_red1$Timestamp<- mdy_hms(data_red1$Timestamp)
 cleaned_rwis1$Timestamp <- mdy_hm(cleaned_rwis1$Timestamp)
@@ -179,7 +188,7 @@ combined_data$dfte <- NULL
 combined_data$rwis_rt <- NULL
 combined_data$Station <- NULL
 
-
+tracker <- data.frame()
 
 #for each observation
 for (obs in 1:nrow(combined_data)) {
@@ -198,7 +207,7 @@ for (obs in 1:nrow(combined_data)) {
   
   #select rwis data in closest time to the observation
   for (a in 1:nrow(cleaned_rwis1)) {
-    if (cleaned_rwis1[a,"dfte"]< 10) {
+    if (cleaned_rwis1[a,"dfte"]< 10) { #how can I make sure this 10 means 10 minutes?
       temp_occ <- rbind(temp_occ,cleaned_rwis1[a,])
       }
   }
@@ -248,7 +257,17 @@ for (obs in 1:nrow(combined_data)) {
   target_time <- NULL
   row <- NULL
   
-  print(obs)
+  print(paste(obs, " row"))
+  print(paste(nrow(combined_data)-obs,"rows left"))
+  print("Iteration run")
   print(Sys.time()-it_prev)
+  print("Total time")
+  print(Sys.time()-begin_time)
+  
+  temp_tracker <-data.frame(Run =obs,
+                            time =Sys.time()-it_prev)
+  tracker <-rbind(tracker,temp_tracker)
 }
-print(Sys.time()-begin_time)
+
+write.csv(combined_data, file=(paste0(source,"complete.csv")),row.names=FALSE)
+ggplot(tracker, aes(x= Run, y =time))+geom_line()

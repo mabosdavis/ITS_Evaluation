@@ -1,6 +1,7 @@
 ## Trial data compiling
 library (dplyr)
 library(lubridate)
+begin_time <- Sys.time()
 
 source <- "C:\\Users\\hilla\\Documents\\BYU\\Masters\\S(102520)\\"
 
@@ -43,6 +44,8 @@ timeoff <- ymd_hms("2020-10-26 6:00:00 PM")
 
 data_red$timeon_diff <- difftime(data_red$Timestamp, timeon, units = c("hours"))
 data_red$timeoff_diff <- difftime(timeoff, data_red$Timestamp, units = c("hours"))
+
+## trim down to data 30 min before and 30 min after##
 
 #combine rwis data
 cleaned_rwis <- data.frame()
@@ -176,24 +179,37 @@ combined_data$dfte <- NULL
 combined_data$rwis_rt <- NULL
 combined_data$Station <- NULL
 
+
+
 #for each observation
 for (obs in 1:nrow(combined_data)) {
+  it_prev <- Sys.time()
   #select data
   row <- data_red1[obs,]
+  
+  temp_occ <- data.frame()
   
   #define key variables
   target_time <- ymd_hms(row[["Timestamp"]])
   target_mp <- row[["MP"]]
   
   #find difference in times
-  cleaned_rwis1$dfte <- abs(cleaned_rwis1$Timestamp-target_time)
+  cleaned_rwis1$dfte <- as.numeric(abs(cleaned_rwis1$Timestamp-target_time))/60
   
   #select rwis data in closest time to the observation
   for (a in 1:nrow(cleaned_rwis1)) {
-    if (cleaned_rwis1[a,"dfte"]<10) {
+    if (cleaned_rwis1[a,"dfte"]< 10) {
       temp_occ <- rbind(temp_occ,cleaned_rwis1[a,])
       }
   }
+  #if # rows <0 then stop and go to next iteration
+  
+  if (nrow(temp_occ)<1) {
+    next
+  }
+  #sort dfte values low to high and select only the 10 smallest values
+  temp_occ <- temp_occ[order(temp_occ[,"dfte"])[1:10], ]
+
   
 
   
@@ -212,9 +228,9 @@ for (obs in 1:nrow(combined_data)) {
     temp_occ$dfmp_r <- 1.0
     # calculate factors for each row ((max-observed)/max)
     for (c in 1:nrow(temp_occ)) {
-      temp_occ[c,"dfte_r"] <- abs(max(temp_occ$dfte)-temp_occ[c,"dfte"])
-      temp_occ[c,"dfte_r"] <- as.numeric(temp_occ[c,"dfte_r"])/as.numeric(max(temp_occ$dfte))
-      temp_occ[c,"dfmp_r"] <- as.numeric(abs(max(temp_occ$dfmp)-temp_occ[c,"dfmp"])/max(temp_occ$dfmp))
+      temp_occ[c,"dfte_r"] <- abs(max(temp_occ$dfte, na.rm = TRUE)-temp_occ[c,"dfte"])
+      temp_occ[c,"dfte_r"] <- as.numeric(temp_occ[c,"dfte_r"])/as.numeric(max(temp_occ$dfte, na.rm = TRUE))
+      temp_occ[c,"dfmp_r"] <- as.numeric(abs(max(temp_occ$dfmp, na.rm = TRUE)-temp_occ[c,"dfmp"])/max(temp_occ$dfmp, na.rm = TRUE))
       if (is.na(temp_occ[c,b])) { #calculate null factor
         print(c)
         print("true")
@@ -228,4 +244,11 @@ for (obs in 1:nrow(combined_data)) {
     #insert into the data
     combined_data[obs,b] <- opt_d
   }
+  target_mp <- NULL
+  target_time <- NULL
+  row <- NULL
+  
+  print(obs)
+  print(Sys.time()-it_prev)
 }
+print(Sys.time()-begin_time)

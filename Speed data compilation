@@ -125,7 +125,7 @@ for (x in rwis_stations){
     } 
     if (grepl("Date",name)) {
       #does this next line work?
-      data$i<-mdy_hms(data[,i])
+      data$i<-mdy_hm(data[,i])
       colnames(data)[i]<- "Timestamp"
       print("Timestamp")
       next
@@ -155,12 +155,77 @@ for (x in rwis_stations){
 }
 cleaned_rwis <-left_join(cleaned_rwis,weather_info, by = "Station")
 
-# Subtract one day from each timestamp
+# Subtract one day from each timestamp for cleaning
 data_red$Timestamp <- data_red$Timestamp - days(1)
 
 #order data
 data_red1 <- arrange(data_red,Timestamp)
 cleaned_rwis1 <- arrange(cleaned_rwis,Timestamp)
-cleaned_rwis1$Timestamp <- mdy_hms(cleaned_rwis1$Timestamp)
+#data_red1$Timestamp<- mdy_hms(data_red1$Timestamp)
+cleaned_rwis1$Timestamp <- mdy_hm(cleaned_rwis1$Timestamp)
 
-#find closest, non-error data point based on timestamp
+#Define List of variables
+rwis <- c("Air_Temp","Road_Temp","Grip","Precipitation","Visibility")
+
+#prep rwis data
+cleaned_rwis1$dfte <- ""
+
+#create data frame to fill in the data
+combined_data <- left_join(data_red1,cleaned_rwis1, by= c("MP","Timestamp"))
+combined_data$dfte <- NULL
+combined_data$rwis_rt <- NULL
+combined_data$Station <- NULL
+
+#for each observation
+for (obs in 1:nrow(combined_data)) {
+  #select data
+  row <- data_red1[obs,]
+  
+  #define key variables
+  target_time <- ymd_hms(row[["Timestamp"]])
+  target_mp <- row[["MP"]]
+  
+  #find difference in times
+  cleaned_rwis1$dfte <- abs(cleaned_rwis1$Timestamp-target_time)
+  
+  #select rwis data in closest time to the observation
+  for (a in 1:nrow(cleaned_rwis1)) {
+    if (cleaned_rwis1[a,"dfte"]<10) {
+      temp_occ <- rbind(temp_occ,cleaned_rwis1[a,])
+      }
+  }
+  
+
+  
+  #prep additional variables 
+  temp_occ$dfmp <- abs(temp_occ$MP-target_mp)
+  temp_occ$dfte_r <- "" #time factor
+  temp_occ$dfmp_r <- "" #mile post factor
+  temp_occ$opt_d <- "" #overall factor
+  
+  # for each rwis factor
+  for (b in rwis) {
+    #reset variables
+    temp_occ$dftv_r <-1.0
+    temp_occ$opt_d <- 1.0
+    temp_occ$dfte_r <- 1.0
+    temp_occ$dfmp_r <- 1.0
+    # calculate factors for each row ((max-observed)/max)
+    for (c in 1:nrow(temp_occ)) {
+      temp_occ[c,"dfte_r"] <- abs(max(temp_occ$dfte)-temp_occ[c,"dfte"])
+      temp_occ[c,"dfte_r"] <- as.numeric(temp_occ[c,"dfte_r"])/as.numeric(max(temp_occ$dfte))
+      temp_occ[c,"dfmp_r"] <- as.numeric(abs(max(temp_occ$dfmp)-temp_occ[c,"dfmp"])/max(temp_occ$dfmp))
+      if (is.na(temp_occ[c,b])) { #calculate null factor
+        print(c)
+        print("true")
+        temp_occ[c,"dftv_r"] <- as.numeric(0.0)
+      }
+      #overall factor, Bigger the better
+      temp_occ[c,"opt_d"]<-prod(temp_occ[c,"dftv_r"],temp_occ[c,"dfte_r"],temp_occ[c,"dfmp_r"])
+    }
+    #identify optimal value to use
+    opt_d <- temp_occ[which.max(temp_occ$opt_d),b]
+    #insert into the data
+    combined_data[obs,b] <- opt_d
+  }
+}

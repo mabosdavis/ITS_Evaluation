@@ -222,11 +222,11 @@ for (obs in 1:nrow(combined_data)) {
   target_mp <- row[["MP"]]
   
   #find difference in times. Should overwrite prexisting data
-  cleaned_rwis1$dfte <- as.numeric(abs(cleaned_rwis1$Timestamp-target_time))/60
+  cleaned_rwis1$dfte <- abs(difftime(cleaned_rwis1$Timestamp,target_time, units = c("mins")))
   
   #select rwis data in closest time to the observation
   for (a in 1:nrow(cleaned_rwis1)) {
-    if (cleaned_rwis1[a,"dfte"]< 10) { ##how can I make sure this 10 means 10 minutes? It doesn't matter a whole lot, but may be able to save some time
+    if (cleaned_rwis1[a,"dfte"]< 10) {
       temp_occ <- rbind(temp_occ,cleaned_rwis1[a,])
       }
   }

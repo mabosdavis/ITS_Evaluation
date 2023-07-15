@@ -138,7 +138,7 @@ msg$tt <- NULL
 # - VMS route and bound
 
 # load devices data
-devices <- read.csv("data/vms_devices.csv")
+devices <- read.csv("data/VMS_Join.R OG Files/vms_devices.csv")
 
 # clean devices data for relevant info
 devices <- devices %>% 
@@ -176,20 +176,19 @@ crash$datetime <- as.POSIXct(paste(crash$Date, crash$Time),
                              format = "%Y-%m-%d %H:%M:%S",
                              tz = "US/Mountain")
 
-# create 2hr time buffer from crash start time
-crash <- crash %>% 
-  mutate(upper_time = datetime + minutes(120))
+# # create 2hr time buffer from crash start time
+# crash <- crash %>% 
+#   mutate(upper_time = datetime + minutes(120))
 
 # clean crash column names
 crash <- crash %>% 
   select(`#`, Location, `Affected Volume`, 
-         `Total Excess Travel Time`, datetime, upper_time) %>% 
+         `Total Excess Travel Time`, datetime) %>% 
   rename(C.crash.id = `#`,
          C.location = Location, 
          C.affected.volume = `Affected Volume`,
          C.TETT = `Total Excess Travel Time`,
-         C.start.time = datetime, 
-         C.two.hours = upper_time)
+         C.start.time = datetime)
 
 #################################################################
 ##################Left join crash to msg data####################
@@ -366,7 +365,3 @@ vms$V.message <- gsub("NA","",as.character(vms$V.message))
 vms$Message1 <- NULL; vms$Message2 <- NULL; 
 vms$Message3 <- NULL; vms$Message4 <- NULL; 
 vms$Message5 <- NULL; vms$Message6 <- NULL;
-
-
-
-

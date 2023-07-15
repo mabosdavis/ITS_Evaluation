@@ -183,7 +183,7 @@ for (x in rwis_stations){
 
 #add station info to the rwis data
 cleaned_rwis <-left_join(cleaned_rwis,weather_info, by = "Station")
-cleaned_rwis1$dfte <- ""
+
 
 ## Subtract one day from each timestamp for cleaning. Remove for actual data
 data_red1$Timestamp <- data_red1$Timestamp - days(1)
@@ -193,6 +193,7 @@ data_red1 <- arrange(data_red1,Timestamp)
 cleaned_rwis1 <- arrange(cleaned_rwis,Timestamp)
 ###data_red1$Timestamp<- mdy_hms(data_red1$Timestamp)
 cleaned_rwis1$Timestamp <- mdy_hm(cleaned_rwis1$Timestamp)
+cleaned_rwis1$dfte <- ""
 
 #Define List of variables to parse through
 rwis <- c("Air_Temp","Road_Temp","Grip","Precipitation","Visibility")

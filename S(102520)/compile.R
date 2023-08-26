@@ -1,0 +1,293 @@
+#### Trial data compiling
+
+# Notes
+## Edits to make
+### Used for debugging
+
+library (dplyr)
+library(ggplot2)
+library(lubridate)
+
+#set begin time
+begin_time <- Sys.time()
+
+#define source for files
+source <- "C:\\Users\\Matt\\Documents\\R\\ITS_Evaluation\\S(102520)\\"
+
+##set up reference data. In the future I'll just have this draw in .csv for the pems and rwis
+pems_info <- data.frame(IntId = c(100067,100875,100876,100877,100878,100879),
+                      MP = c(17.18,5.61,10.05,12.7,13.89,15.01),
+                      pems_rt = c("US-89","US-89","US-89","US-89","US-89","US-89"))
+
+weather_info <- data.frame(Station = c("C8843", "UTMAN", "PC115", "C8842", "SWH", "C8916"),
+                           MP = c(3.7,5.8,10,10.2,12.7,16.9),
+                           rwis_rt = c("US-89","US-89","US-89","US-89","US-89","US-89"))
+
+#define pem, rwis stations, and sign data to use for this run
+pems_stations <- c(100067,100875,100876,100877,100878,100879)
+rwis_stations <- c("C8842", "C8843","C8916","SWH","UTMAN")
+
+sign_info <- data.frame(Direction = c("S", "N"),
+                        sign_MP = c(2.26, 11.6),
+                        road_FFS = c(45,45),
+                        read_rt = c("US-89", "US-89"),
+                        Message = c("Slow down", "down slow"))
+
+
+#combine pems data
+source_csv <- "C:\\Users\\Matt\\Documents\\R\\ITS_Evaluation\\S(102520)\\csv"
+csv_files <- list.files(source_csv, pattern = "*.csv", full.names = TRUE)
+data_red <- data.frame()
+for (file in csv_files) {
+  data <- read.csv(file)
+  data$Timestamp <-mdy_hms(data$Timestamp)
+  data_red <- rbind(data_red,data)
+}
+
+data_red <- data_red[, -c(2,9,10,11,12)]
+
+data_red <-left_join(data_red,pems_info, by = "IntId")
+data_red <-left_join(data_red,sign_info, by = "Direction")
+  
+timeon <- ymd_hms("2020-10-26 3:03:00 PM")
+timeoff <- ymd_hms("2020-10-26 6:00:00 PM")
+
+#after on = (+), before = (-)
+data_red$timeon_diff <- difftime(data_red$Timestamp, timeon, units = c("hours"))
+#before off = (+), after = (-)
+data_red$timeoff_diff <- difftime(timeoff, data_red$Timestamp, units = c("hours"))
+
+
+# trim down to data 15 min before and 15 min after. can change these as needed
+data_red1 <- data.frame()
+for (e in 1:nrow(data_red)) {
+  if (data_red[e,"timeon_diff"]>-.25&data_red[e,"timeoff_diff"]>-.25) {#if within bounds
+    data_red1 <-rbind(data_red1,data_red[e,]) #add row to selected data frame
+    #n<-n+1
+    #print(n)
+  }
+}
+
+
+#combine rwis data
+cleaned_rwis <- data.frame()
+rwishead <- c("Station","Timestamp", "Air_Temp","Road_Temp","Grip","Precipitation","Visibility")
+for (x in rwis_stations){
+  #read in the data
+  string <- paste0(source,x,".csv")
+  data <- read.csv(string)
+  for(i in seq_along(data)){
+    name <- colnames(data)[i]
+###    print(i)
+###    print(name)
+    
+    #start cleaning the data
+   if (grepl("temp",name)&grepl("air",name)&is.numeric(data[[i]])) {
+     c= i-1
+     for (b in 1:c) {
+       nameb <- colnames(data)[b]
+       if (grepl("Air_Temp",nameb)) {
+         colnames(data)[i]<- "extra" 
+       }
+      }
+      if (!grepl("extra",colnames(data)[i])) {
+        colnames(data)[i]<- "Air_Temp"
+###        print("Air_Temp")
+      }
+       next
+   } 
+    if (grepl("temp",name)&grepl("road",name)&is.numeric(data[[i]])) {
+      c= i-1
+      for (b in 1:c) {
+        nameb <- colnames(data)[b]
+        if (grepl("Road_Temp",nameb)) {
+          colnames(data)[i]<- "extra" 
+           }
+        }
+        if (!grepl("extra",colnames(data)[i])) {
+          colnames(data)[i]<- "Road_Temp"
+###          print("Road_Temp")
+        }
+      next
+    } 
+    if (grepl("grip",name)&is.numeric(data[[i]])) {
+      c= i-1
+      for (b in 1:c) {
+        nameb <- colnames(data)[b]
+        if (grepl("Grip",nameb)) {
+          colnames(data)[i]<- "extra" 
+          }
+        }
+        if (!grepl("extra",colnames(data)[i])) {
+          colnames(data)[i]<- "Grip"
+###          print("Grip")
+        }
+      next
+    } 
+    if (grepl("precip",name)&is.numeric(data[[i]])) {
+      c= i-1
+      for (b in 1:c) {
+        nameb <- colnames(data)[b]
+        if (grepl("Precipitation",nameb)) {
+          colnames(data)[i]<- "extra" 
+          }
+        }
+        if (!grepl("extra",colnames(data)[i])) {
+          colnames(data)[i]<- "Precipitation"
+###          print("Precipitation")
+        }
+      next
+    }
+    if (grepl("condition",name)& !is.numeric(data[[i]]) & !any(is.na(data$name))) {
+     colnames(data)[i]<- "Visibility"
+###     print("Visibility")
+     next
+      }
+    if (grepl("ID",name)) {
+      colnames(data)[i]<- "Station"
+###      print("Station")
+      next
+    } 
+    if (grepl("Date",name)) {
+      #does this next line work?
+      data$i<-mdy_hm(data[,i])
+      colnames(data)[i]<- "Timestamp"
+###      print("Timestamp")
+      next
+    } 
+###    print(colnames(data)[i])
+  }
+  #remove columns of data that are extra
+  for (a in 1:40) {
+    print(a)
+    for (i in seq_along(data) ) {
+      name <- colnames(data)[i]
+      if (!grepl(paste(rwishead, collapse = "|"), name)) {
+       data <- data[,-i]
+       next
+      }
+    }
+  }
+    # Return the station name, can't remember what this does, but too afraid to get rid of it
+  for (d in rwishead){
+    if (!(d %in% colnames(data))) {
+      data <- mutate(data, !!d := NA)
+    }
+  }
+  #I think this orders the data?
+  data <- select(data, all_of(rwishead))
+###  print(x)
+  
+  cleaned_rwis <- rbind(cleaned_rwis, data)
+}
+
+#add station info to the rwis data
+cleaned_rwis <-left_join(cleaned_rwis,weather_info, by = "Station")
+cleaned_rwis1$dfte <- ""
+
+## Subtract one day from each timestamp for cleaning. Remove for actual data
+data_red1$Timestamp <- data_red1$Timestamp - days(1)
+
+#order data by timestamp. Probably not needed
+data_red1 <- arrange(data_red1,Timestamp)
+cleaned_rwis1 <- arrange(cleaned_rwis,Timestamp)
+###data_red1$Timestamp<- mdy_hms(data_red1$Timestamp)
+cleaned_rwis1$Timestamp <- mdy_hm(cleaned_rwis1$Timestamp)
+
+#Define List of variables to parse through
+rwis <- c("Air_Temp","Road_Temp","Grip","Precipitation","Visibility")
+
+
+#create data frame to fill in the data
+combined_data <- left_join(data_red1,cleaned_rwis1, by= c("MP","Timestamp"))
+combined_data$dfte <- NULL
+combined_data$rwis_rt <- NULL
+combined_data$Station <- NULL
+
+#set up iteration tracker
+tracker <- data.frame()
+
+#iterate for each selected observation
+for (obs in 1:nrow(combined_data)) {
+  it_prev <- Sys.time()
+  
+  #select data for iteration
+  row <- data_red1[obs,]
+  
+  temp_occ <- data.frame()
+  
+  #define identifying variables variables
+  target_time <- ymd_hms(row[["Timestamp"]])
+  target_mp <- row[["MP"]]
+  
+  #find difference in times. Should overwrite prexisting data
+  cleaned_rwis1$dfte <- as.numeric(abs(cleaned_rwis1$Timestamp-target_time))/60
+  
+  #select rwis data in closest time to the observation
+  for (a in 1:nrow(cleaned_rwis1)) {
+    if (cleaned_rwis1[a,"dfte"]< 10) { ##how can I make sure this 10 means 10 minutes? It doesn't matter a whole lot, but may be able to save some time
+      temp_occ <- rbind(temp_occ,cleaned_rwis1[a,])
+      }
+  }
+  #if number of rows < 0 then stop and go to next iteration
+  
+  if (nrow(temp_occ)<1) {
+    next
+  }
+  #sort dfte values low to high and select only the 10 smallest values
+  temp_occ <- temp_occ[order(temp_occ[,"dfte"])[1:10], ]
+
+  
+  #prep additional variables 
+  temp_occ$dfmp <- abs(temp_occ$MP-target_mp)
+  temp_occ$dfte_r <- "" #time factor
+  temp_occ$dfmp_r <- "" #mile post factor
+  temp_occ$opt_d <- "" #overall factor
+  
+  # for each rwis factor
+  for (b in rwis) {
+    #reset variables, probably not needed, but probably good to have
+    temp_occ$dftv_r <-1.0
+    temp_occ$opt_d <- 1.0
+    temp_occ$dfte_r <- 1.0
+    temp_occ$dfmp_r <- 1.0
+    # calculate factors for each row ((max-observed)/max)
+    for (c in 1:nrow(temp_occ)) {
+      temp_occ[c,"dfte_r"] <- abs(max(temp_occ$dfte, na.rm = TRUE)-temp_occ[c,"dfte"])
+      temp_occ[c,"dfte_r"] <- as.numeric(temp_occ[c,"dfte_r"])/as.numeric(max(temp_occ$dfte, na.rm = TRUE))
+      temp_occ[c,"dfmp_r"] <- as.numeric(abs(max(temp_occ$dfmp, na.rm = TRUE)-temp_occ[c,"dfmp"])/max(temp_occ$dfmp, na.rm = TRUE))
+      if (is.na(temp_occ[c,b])) { #calculate null factor if bad data (if na)
+##        print(c)
+##        print("true")
+        temp_occ[c,"dftv_r"] <- as.numeric(0.0)
+      }
+      #overall factor (0,1), 1 good 0 bad
+      temp_occ[c,"opt_d"]<-prod(temp_occ[c,"dftv_r"],temp_occ[c,"dfte_r"],temp_occ[c,"dfmp_r"])
+    }
+    #identify optimal value to use
+    opt_d <- temp_occ[which.max(temp_occ$opt_d),b]
+    #insert into the data
+    combined_data[obs,b] <- opt_d
+  }
+  #reset data
+  target_mp <- NULL
+  target_time <- NULL
+  row <- NULL
+  
+  ## for debugging purposes, and to track iterations
+  print(paste(obs, " row"))
+  print(paste(nrow(combined_data)-obs,"rows left"))
+  print("Iteration run")
+  print(Sys.time()-it_prev)
+  print("Total time")
+  print(Sys.time()-begin_time)
+  
+  #track run data for reference
+  temp_tracker <-data.frame(Run =obs,
+                            time =Sys.time()-it_prev)
+  tracker <-rbind(tracker,temp_tracker)
+}
+
+#pushes data
+write.csv(combined_data, file=(paste0(source,"complete.csv")),row.names=FALSE)
+ggplot(tracker, aes(x= Run, y =time))+geom_line() #plot iterations for curiosity sake
